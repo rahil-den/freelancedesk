@@ -1,98 +1,117 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-
-const GridIcon = () => (
-  <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-    <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-    <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
-  </svg>
-);
-
-const FolderIcon = () => (
-  <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-  </svg>
-);
-
-const LogoutIcon = () => (
-  <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-    <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
-  </svg>
-);
-
-const LogoIcon = () => (
-  <svg width="22" height="22" fill="none" viewBox="0 0 24 24">
-    <rect x="2" y="2" width="9" height="9" rx="2" fill="#6366f1"/>
-    <rect x="13" y="2" width="9" height="9" rx="2" fill="#6366f1" opacity="0.6"/>
-    <rect x="2" y="13" width="9" height="9" rx="2" fill="#6366f1" opacity="0.6"/>
-    <rect x="13" y="13" width="9" height="9" rx="2" fill="#6366f1" opacity="0.3"/>
-  </svg>
-);
+import api from '../lib/api';
 
 export default function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
+  const [projects, setProjects] = useState([]);
+
+  useEffect(() => {
+    api.get('/projects')
+      .then(res => setProjects(res.data))
+      .catch(() => {});
+  }, [pathname]); // re-fetch when route changes so list stays fresh
 
   const logout = () => {
     localStorage.removeItem('token');
     router.push('/login');
   };
 
-  const isActive = (path) => pathname === path || pathname.startsWith(path + '/');
-
-  const navItems = [
-    { href: '/dashboard', label: 'Dashboard', icon: <GridIcon /> },
-  ];
+  const isProjectActive = (id) => pathname === `/project/${id}`;
+  const isDashboardActive = pathname === '/dashboard';
 
   return (
     <aside
-      style={{ background: '#161b22', borderRight: '1px solid #21262d' }}
-      className="w-60 min-h-screen flex flex-col flex-shrink-0"
+      className="w-52 min-h-screen flex flex-col flex-shrink-0"
+      style={{ background: '#FFFFFF', borderRight: '1px solid #E5E3DE' }}
     >
       {/* Logo */}
-      <div className="px-5 py-5" style={{ borderBottom: '1px solid #21262d' }}>
-        <div className="flex items-center gap-3">
-          <LogoIcon />
-          <span className="font-bold text-white text-base tracking-tight">FreelanceDesk</span>
-        </div>
+      <div className="px-5 py-5" style={{ borderBottom: '1px solid #E5E3DE' }}>
+        <span className="text-sm font-semibold tracking-tight" style={{ color: '#1C1C1C', letterSpacing: '-0.01em' }}>
+          FreelanceDesk
+        </span>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-1">
-        <p className="text-xs font-semibold uppercase tracking-widest px-3 mb-3" style={{ color: '#484f58' }}>Menu</p>
-        {navItems.map(({ href, label, icon }) => (
-          <Link
-            key={href}
-            href={href}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all"
-            style={
-              isActive(href)
-                ? { background: 'rgba(99,102,241,0.15)', color: '#818cf8' }
-                : { color: '#8b949e' }
-            }
-            onMouseEnter={e => { if (!isActive(href)) { e.currentTarget.style.background = '#21262d'; e.currentTarget.style.color = '#e6edf3'; } }}
-            onMouseLeave={e => { if (!isActive(href)) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#8b949e'; } }}
-          >
-            <span style={{ opacity: isActive(href) ? 1 : 0.7 }}>{icon}</span>
-            {label}
-          </Link>
-        ))}
+      <nav className="flex-1 px-3 py-3 overflow-y-auto">
+
+        {/* Dashboard link */}
+        <Link
+          href="/dashboard"
+          className="flex items-center gap-2.5 px-3 py-2 rounded text-sm transition-colors mb-1"
+          style={
+            isDashboardActive
+              ? { color: '#1C1C1C', background: '#F0EEE9', fontWeight: 500 }
+              : { color: '#8A8A8A' }
+          }
+        >
+          <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.75" viewBox="0 0 24 24">
+            <rect x="3" y="3" width="7" height="7" rx="1"/>
+            <rect x="14" y="3" width="7" height="7" rx="1"/>
+            <rect x="14" y="14" width="7" height="7" rx="1"/>
+            <rect x="3" y="14" width="7" height="7" rx="1"/>
+          </svg>
+          All Projects
+        </Link>
+
+        {/* Projects section */}
+        {projects.length > 0 && (
+          <div className="mt-3">
+            <p className="px-3 mb-1 text-xs font-medium uppercase tracking-widest" style={{ color: '#B0ADAA' }}>
+              Pages
+            </p>
+            <div className="space-y-0.5">
+              {projects.map(project => {
+                const active = isProjectActive(project._id);
+                const STATUS_DOT = {
+                  active:    '#16A34A',
+                  completed: '#8A8A8A',
+                  'on-hold': '#D97706',
+                };
+                return (
+                  <Link
+                    key={project._id}
+                    href={`/project/${project._id}`}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded text-sm transition-colors group"
+                    style={
+                      active
+                        ? { color: '#1C1C1C', background: '#F0EEE9', fontWeight: 500 }
+                        : { color: '#8A8A8A' }
+                    }
+                    onMouseEnter={e => { if (!active) { e.currentTarget.style.color = '#1C1C1C'; e.currentTarget.style.background = '#F8F7F4'; } }}
+                    onMouseLeave={e => { if (!active) { e.currentTarget.style.color = '#8A8A8A'; e.currentTarget.style.background = 'transparent'; } }}
+                  >
+                    <span
+                      className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                      style={{ background: STATUS_DOT[project.status] || '#8A8A8A' }}
+                    />
+                    <span className="truncate">{project.title}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </nav>
 
-      {/* Logout */}
-      <div className="px-3 py-4" style={{ borderTop: '1px solid #21262d' }}>
+      {/* Sign out */}
+      <div className="px-3 py-4" style={{ borderTop: '1px solid #E5E3DE' }}>
         <button
           onClick={logout}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all"
-          style={{ color: '#8b949e' }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; e.currentTarget.style.color = '#f87171'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#8b949e'; }}
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded text-sm transition-colors text-left"
+          style={{ color: '#8A8A8A' }}
+          onMouseEnter={e => { e.currentTarget.style.color = '#1C1C1C'; e.currentTarget.style.background = '#F0EEE9'; }}
+          onMouseLeave={e => { e.currentTarget.style.color = '#8A8A8A'; e.currentTarget.style.background = 'transparent'; }}
         >
-          <LogoutIcon />
-          Logout
+          <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.75" viewBox="0 0 24 24">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+          Sign out
         </button>
       </div>
     </aside>

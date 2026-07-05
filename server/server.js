@@ -5,7 +5,10 @@ const dotenv = require("dotenv");
 const mongoose = require("mongoose");
 
 dotenv.config();
-app.use(cors());
+app.use(cors({
+  origin: process.env.CLIENT_URL ? process.env.CLIENT_URL.split(',') : '*',
+  credentials: true,
+}));
 
 app.use(express.json());
 

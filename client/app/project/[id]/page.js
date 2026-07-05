@@ -6,35 +6,6 @@ import api from '../../lib/api';
 import Sidebar from '../../components/Sidebar';
 import ProtectedRoute from '../../components/ProtectedRoute';
 
-const BackIcon = () => (
-  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-    <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
-  </svg>
-);
-
-const TrashIcon = () => (
-  <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-    <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-  </svg>
-);
-
-const statusConfig = {
-  active:    { label: 'Active',    bg: 'rgba(16,185,129,0.12)', color: '#34d399', dot: '#10b981' },
-  completed: { label: 'Completed', bg: 'rgba(99,102,241,0.12)', color: '#818cf8', dot: '#6366f1' },
-  'on-hold': { label: 'On Hold',   bg: 'rgba(245,158,11,0.12)', color: '#fbbf24', dot: '#f59e0b' },
-};
-
-function StatusBadge({ status }) {
-  const cfg = statusConfig[status] || statusConfig['on-hold'];
-  return (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
-      style={{ background: cfg.bg, color: cfg.color }}>
-      <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: cfg.dot }}></span>
-      {cfg.label}
-    </span>
-  );
-}
-
 function ProjectDetailContent() {
   const { id } = useParams();
   const router = useRouter();
@@ -90,102 +61,163 @@ function ProjectDetailContent() {
     }
   };
 
-  const completed = tasks.filter(t => t.completed).length;
-  const progress = tasks.length > 0 ? Math.round((completed / tasks.length) * 100) : 0;
+  const STATUS = {
+    active:    { label: 'Active',    dot: '#16A34A' },
+    completed: { label: 'Completed', dot: '#8A8A8A' },
+    'on-hold': { label: 'On Hold',   dot: '#D97706' },
+  };
 
-  const inputStyle = { background: '#0d1117', border: '1px solid #30363d', color: '#e6edf3' };
+  const pending   = tasks.filter(t => !t.completed);
+  const completed = tasks.filter(t => t.completed);
+  const progress  = tasks.length > 0 ? Math.round((completed.length / tasks.length) * 100) : 0;
+  const st = project ? (STATUS[project.status] || STATUS['on-hold']) : null;
+
+  const inputStyle = { background: '#F5F4F0', border: '1px solid #E5E3DE', color: '#1C1C1C' };
+
+  const TaskRow = ({ task }) => (
+    <div
+      className="flex items-center gap-4 px-5 py-3.5 group transition-colors"
+      style={{ borderBottom: '1px solid #F0EEE9' }}
+      onMouseEnter={e => e.currentTarget.style.background = '#FAFAF9'}
+      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+    >
+      <button
+        onClick={() => toggleTask(task)}
+        className="w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-colors"
+        style={
+          task.completed
+            ? { background: '#1C1C1C', borderColor: '#1C1C1C' }
+            : { background: 'transparent', borderColor: '#D0CEC9' }
+        }
+        onMouseEnter={e => { if (!task.completed) { e.currentTarget.style.borderColor = '#1C1C1C'; } }}
+        onMouseLeave={e => { if (!task.completed) { e.currentTarget.style.borderColor = '#D0CEC9'; } }}
+      >
+        {task.completed && (
+          <svg width="9" height="9" fill="none" stroke="white" strokeWidth="2.5" viewBox="0 0 24 24">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        )}
+      </button>
+
+      <div className="flex-1 min-w-0">
+        <span
+          className="text-sm"
+          style={{ color: task.completed ? '#B0ADAA' : '#1C1C1C', textDecoration: task.completed ? 'line-through' : 'none' }}
+        >
+          {task.title}
+        </span>
+        {task.dueDate && (
+          <span className="text-xs ml-3" style={{ color: '#B0ADAA' }}>
+            {new Date(task.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+          </span>
+        )}
+      </div>
+
+      <button
+        onClick={() => deleteTask(task._id)}
+        className="opacity-0 group-hover:opacity-100 p-1 rounded transition-colors"
+        style={{ color: '#B0ADAA' }}
+        onMouseEnter={e => { e.currentTarget.style.color = '#B91C1C'; e.currentTarget.style.background = '#FEF2F2'; }}
+        onMouseLeave={e => { e.currentTarget.style.color = '#B0ADAA'; e.currentTarget.style.background = 'transparent'; }}
+      >
+        <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+          <polyline points="3 6 5 6 21 6"/>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+        </svg>
+      </button>
+    </div>
+  );
 
   return (
-    <div className="flex min-h-screen" style={{ background: '#0d1117' }}>
+    <div className="flex min-h-screen" style={{ background: '#F5F4F0' }}>
       <Sidebar />
 
       <main className="flex-1 overflow-y-auto">
         {/* Header */}
-        <div className="px-8 pt-8 pb-6" style={{ borderBottom: '1px solid #21262d' }}>
+        <div className="px-10 py-8" style={{ borderBottom: '1px solid #E5E3DE', background: '#FFFFFF' }}>
           <button
             onClick={() => router.push('/dashboard')}
-            className="flex items-center gap-2 text-sm mb-4 transition-all"
-            style={{ color: '#8b949e' }}
-            onMouseEnter={e => e.currentTarget.style.color = '#e6edf3'}
-            onMouseLeave={e => e.currentTarget.style.color = '#8b949e'}
+            className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider mb-5 transition-colors"
+            style={{ color: '#8A8A8A' }}
+            onMouseEnter={e => e.currentTarget.style.color = '#1C1C1C'}
+            onMouseLeave={e => e.currentTarget.style.color = '#8A8A8A'}
           >
-            <BackIcon /> Back to Dashboard
+            <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+              <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+            </svg>
+            Projects
           </button>
 
-          <div className="flex items-start justify-between">
+          <div className="flex items-end justify-between">
             <div>
-              <p className="text-xs font-medium uppercase tracking-widest mb-1" style={{ color: '#8b949e' }}>Project</p>
-              <h1 className="text-2xl font-bold text-white mb-2">
-                {project ? project.title : 'Loading...'}
+              <h1 className="text-2xl font-semibold mb-2" style={{ color: '#1C1C1C', letterSpacing: '-0.02em' }}>
+                {project ? project.title : '—'}
               </h1>
-              <div className="flex items-center gap-3">
-                {project && (
-                  <>
-                    <span className="text-sm" style={{ color: '#8b949e' }}>{project.clientName}</span>
-                    <span style={{ color: '#30363d' }}>·</span>
-                    <StatusBadge status={project?.status} />
-                  </>
-                )}
-              </div>
+              {project && st && (
+                <div className="flex items-center gap-3">
+                  <span className="text-sm" style={{ color: '#8A8A8A' }}>{project.clientName}</span>
+                  <span style={{ color: '#E5E3DE' }}>·</span>
+                  <span className="flex items-center gap-1.5 text-sm" style={{ color: '#1C1C1C' }}>
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: st.dot }} />
+                    {st.label}
+                  </span>
+                </div>
+              )}
             </div>
 
-            {/* Progress ring summary */}
             {tasks.length > 0 && (
               <div className="text-right">
-                <p className="text-3xl font-bold text-white">{progress}%</p>
-                <p className="text-xs" style={{ color: '#8b949e' }}>{completed}/{tasks.length} done</p>
+                <p className="text-2xl font-semibold" style={{ color: '#1C1C1C', letterSpacing: '-0.02em' }}>{progress}%</p>
+                <p className="text-xs" style={{ color: '#8A8A8A' }}>{completed.length} of {tasks.length} done</p>
               </div>
             )}
           </div>
 
-          {/* Progress bar */}
           {tasks.length > 0 && (
-            <div className="mt-4">
-              <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: '#21262d' }}>
-                <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{ width: `${progress}%`, background: progress === 100 ? '#10b981' : '#6366f1' }}
-                />
-              </div>
+            <div className="mt-5 w-full h-px rounded-full overflow-hidden" style={{ background: '#E5E3DE' }}>
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{ width: `${progress}%`, background: progress === 100 ? '#16A34A' : '#1C1C1C' }}
+              />
             </div>
           )}
         </div>
 
-        <div className="px-8 py-8 space-y-6">
+        <div className="px-10 py-8">
           {error && (
-            <div className="px-4 py-3 rounded-lg text-sm" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171' }}>
+            <div className="mb-6 px-4 py-3 rounded-lg text-sm" style={{ background: '#FEF2F2', color: '#B91C1C', border: '1px solid #FECACA' }}>
               {error}
             </div>
           )}
 
-          {/* Add Deliverable */}
-          <form onSubmit={createTask} className="flex gap-3">
+          {/* Add task form */}
+          <form onSubmit={createTask} className="flex gap-2 mb-8">
             <input
               type="text"
               placeholder="Add a deliverable..."
-              className="flex-1 px-4 py-2.5 rounded-lg text-sm outline-none"
+              className="flex-1 px-4 py-2.5 rounded-lg text-sm outline-none transition-colors"
               style={inputStyle}
               value={form.title}
               onChange={e => setForm({ ...form, title: e.target.value })}
-              onFocus={e => e.target.style.borderColor = '#6366f1'}
-              onBlur={e => e.target.style.borderColor = '#30363d'}
+              onFocus={e => e.target.style.borderColor = '#1C1C1C'}
+              onBlur={e => e.target.style.borderColor = '#E5E3DE'}
               required
             />
             <input
               type="date"
-              className="px-4 py-2.5 rounded-lg text-sm outline-none"
-              style={{ ...inputStyle, width: '160px' }}
+              className="px-3 py-2.5 rounded-lg text-sm outline-none transition-colors"
+              style={{ ...inputStyle, width: '150px' }}
               value={form.dueDate}
               onChange={e => setForm({ ...form, dueDate: e.target.value })}
-              onFocus={e => e.target.style.borderColor = '#6366f1'}
-              onBlur={e => e.target.style.borderColor = '#30363d'}
+              onFocus={e => e.target.style.borderColor = '#1C1C1C'}
+              onBlur={e => e.target.style.borderColor = '#E5E3DE'}
             />
             <button
               type="submit"
-              className="px-5 py-2.5 rounded-lg text-sm font-semibold text-white transition-all whitespace-nowrap"
-              style={{ background: '#6366f1' }}
-              onMouseEnter={e => e.currentTarget.style.background = '#4f46e5'}
-              onMouseLeave={e => e.currentTarget.style.background = '#6366f1'}
+              className="px-5 py-2.5 rounded-lg text-sm font-medium text-white transition-colors whitespace-nowrap"
+              style={{ background: '#1C1C1C' }}
+              onMouseEnter={e => e.currentTarget.style.background = '#333333'}
+              onMouseLeave={e => e.currentTarget.style.background = '#1C1C1C'}
             >
               Add
             </button>
@@ -193,89 +225,34 @@ function ProjectDetailContent() {
 
           {/* Task list */}
           {loading ? (
-            <div className="flex items-center justify-center py-20">
-              <div className="w-6 h-6 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin"></div>
+            <div className="flex items-center justify-center py-24">
+              <div className="w-5 h-5 rounded-full border-2 border-gray-300 border-t-gray-800 animate-spin" />
             </div>
           ) : tasks.length === 0 ? (
-            <div className="rounded-xl py-20 text-center" style={{ background: '#161b22', border: '1px dashed #30363d' }}>
-              <p className="text-white font-medium mb-1">No deliverables yet</p>
-              <p className="text-sm" style={{ color: '#8b949e' }}>Add your first deliverable above</p>
+            <div className="py-24 text-center">
+              <p className="text-sm font-medium mb-1" style={{ color: '#1C1C1C' }}>No deliverables yet</p>
+              <p className="text-sm" style={{ color: '#8A8A8A' }}>Add your first deliverable above.</p>
             </div>
           ) : (
-            <div className="space-y-2">
-              {/* Pending tasks */}
-              {tasks.filter(t => !t.completed).map(task => (
-                <div
-                  key={task._id}
-                  className="flex items-center gap-4 px-5 py-4 rounded-xl group transition-all"
-                  style={{ background: '#161b22', border: '1px solid #21262d' }}
-                  onMouseEnter={e => e.currentTarget.style.borderColor = '#30363d'}
-                  onMouseLeave={e => e.currentTarget.style.borderColor = '#21262d'}
-                >
-                  <button
-                    onClick={() => toggleTask(task)}
-                    className="w-5 h-5 rounded-full border-2 flex-shrink-0 transition-all flex items-center justify-center"
-                    style={{ borderColor: '#484f58' }}
-                    onMouseEnter={e => e.currentTarget.style.borderColor = '#6366f1'}
-                    onMouseLeave={e => e.currentTarget.style.borderColor = '#484f58'}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-white truncate">{task.title}</p>
-                    {task.dueDate && (
-                      <p className="text-xs mt-0.5" style={{ color: '#8b949e' }}>
-                        Due {new Date(task.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                      </p>
-                    )}
+            <div className="rounded-xl overflow-hidden" style={{ background: '#FFFFFF', border: '1px solid #E5E3DE' }}>
+              {/* Pending */}
+              {pending.length > 0 && (
+                <div>
+                  <div className="px-5 py-2.5 text-xs font-medium uppercase tracking-wider" style={{ color: '#8A8A8A', borderBottom: '1px solid #F0EEE9', background: '#FAFAF9' }}>
+                    To do · {pending.length}
                   </div>
-                  <button
-                    onClick={() => deleteTask(task._id)}
-                    className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg transition-all"
-                    style={{ color: '#8b949e' }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; e.currentTarget.style.color = '#f87171'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#8b949e'; }}
-                  >
-                    <TrashIcon />
-                  </button>
+                  {pending.map(task => <TaskRow key={task._id} task={task} />)}
                 </div>
-              ))}
+              )}
 
-              {/* Completed tasks */}
-              {tasks.some(t => t.completed) && (
-                <>
-                  <p className="text-xs font-semibold uppercase tracking-widest pt-2 pb-1" style={{ color: '#484f58' }}>Completed</p>
-                  {tasks.filter(t => t.completed).map(task => (
-                    <div
-                      key={task._id}
-                      className="flex items-center gap-4 px-5 py-4 rounded-xl group transition-all"
-                      style={{ background: '#161b22', border: '1px solid #21262d', opacity: 0.6 }}
-                    >
-                      <button
-                        onClick={() => toggleTask(task)}
-                        className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center transition-all"
-                        style={{ background: '#6366f1', border: '2px solid #6366f1' }}
-                      >
-                        <svg width="10" height="10" fill="none" stroke="white" strokeWidth="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-                      </button>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium line-through truncate" style={{ color: '#8b949e' }}>{task.title}</p>
-                        {task.dueDate && (
-                          <p className="text-xs mt-0.5" style={{ color: '#484f58' }}>
-                            Due {new Date(task.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                          </p>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => deleteTask(task._id)}
-                        className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg transition-all"
-                        style={{ color: '#8b949e' }}
-                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; e.currentTarget.style.color = '#f87171'; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#8b949e'; }}
-                      >
-                        <TrashIcon />
-                      </button>
-                    </div>
-                  ))}
-                </>
+              {/* Completed */}
+              {completed.length > 0 && (
+                <div>
+                  <div className="px-5 py-2.5 text-xs font-medium uppercase tracking-wider" style={{ color: '#8A8A8A', borderBottom: '1px solid #F0EEE9', borderTop: pending.length > 0 ? '1px solid #E5E3DE' : 'none', background: '#FAFAF9' }}>
+                    Done · {completed.length}
+                  </div>
+                  {completed.map(task => <TaskRow key={task._id} task={task} />)}
+                </div>
               )}
             </div>
           )}
